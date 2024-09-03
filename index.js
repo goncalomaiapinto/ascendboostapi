@@ -17,6 +17,16 @@ const http = require('http').createServer(app);
 // Integrar Socket.io ao servidor HTTP
 const io = require('socket.io')(http);
 
+const AWS = require('aws-sdk');
+
+AWS.config.update({
+  accessKeyId: process.env.S3_ACCESS_KEY,
+  secretAccessKey: process.env.S3_SECRET_KEY,
+  region: 'eu-north-1' // Altere para sua região
+});
+
+const s3 = new AWS.S3();
+
 // Swagger Setup
 require('./config/swaggerConfig')(app);
 
@@ -63,7 +73,7 @@ app.use((err, req, res, next) => {
 // Sync Models and Start Server
 sequelize.sync().then(() => {
   console.log('Database synced');
-  http.listen(3000, () => {
+  http.listen(3000, '0.0.0.0', () => {
     console.log('Server is running on http://localhost:3000');
     console.log('Swagger UI available on http://localhost:3000/api-docs');
   });
