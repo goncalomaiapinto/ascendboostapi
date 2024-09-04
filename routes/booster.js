@@ -187,4 +187,109 @@ router.put('/profile', async (req, res) => {
   res.json(user);
 });
 
+/**
+ * @swagger
+ * /boosters/orders/{id}/complete:
+ *   put:
+ *     summary: Mark an order as completed and update the booster wallet
+ *     description: Booster can mark an order as completed if it is in progress. The order value will be added to the booster's wallet.
+ *     tags: [Booster]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: The ID of the order
+ *     responses:
+ *       200:
+ *         description: Order completed and wallet updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Order completed and wallet updated
+ *                 wallet:
+ *                   type: number
+ *                   example: 150.00
+ *       400:
+ *         description: Order is not in progress
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         description: Order not found
+ */
+router.put('/orders/:id/complete', async (req, res) => {
+  const order = await Order.findByPk(req.params.id);
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+  if (order.boosterId !== req.user.id) return res.status(403).json({ error: 'Access denied' });
+
+  if (order.status !== 'In Progress') {
+    return res.status(400).json({ error: 'Order is not in progress' });
+  }
+
+  // Marcar a order como concluída
+  order.status = 'Completed';
+  await order.save();
+
+  // Adicionar o valor da order à wallet do booster
+  const booster = await User.findByPk(order.boosterId);
+  booster.wallet += order.price;
+  await booster.save();
+
+  res.json({ message: 'Order completed and wallet updated', wallet: booster.wallet });
+});
+
+/**
+ * @swagger
+ * /boosters/orders/{id}/abandon:
+ *   put:
+ *     summary: Abandon an order that is not completed
+ *     description: Booster can abandon an order that is not yet completed. The order will become available for other boosters.
+ *     tags: [Booster]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: The ID of the order
+ *     responses:
+ *       200:
+ *         description: Order abandoned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Order abandoned
+ *       400:
+ *         description: Cannot abandon a completed order
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         description: Order not found
+ */
+router.put('/orders/:id/abandon', async (req, res) => {
+  const order = await Order.findByPk(req.params.id);
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+  if (order.boosterId !== req.user.id) return res.status(403).json({ error: 'Access denied' });
+
+  if (order.status === 'Completed') {
+    return res.status(400).json({ error: 'Cannot abandon a completed order' });
+  }
+
+  // Desassociar o booster da order e redefinir o status
+  order.boosterId = null;
+  order.status = 'Available';
+  await order.save();
+
+  res.json({ message: 'Order abandoned' });
+});
+
 module.exports = router;

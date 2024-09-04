@@ -46,7 +46,12 @@ const User = sequelize.define('User', {
     type: DataTypes.DATE,
     allowNull: false,
     defaultValue: DataTypes.NOW
-  }
+  },
+  wallet: {
+    type: DataTypes.FLOAT,
+    allowNull: false,
+    defaultValue: 0.0 // A carteira começa com 0.0 para todos os usuários
+  },
 }, {
   hooks: {
     beforeSave: async (user) => {

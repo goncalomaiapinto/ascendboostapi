@@ -309,4 +309,150 @@ router.delete('/users/:id', async (req, res) => {
   res.json({ message: 'User deleted' });
 });
 
+/**
+ * @swagger
+ * /admin/orders/{id}/assign-booster:
+ *   put:
+ *     summary: Assign a booster to an order
+ *     description: Admin can assign a booster to an order. The order must be in 'Available' status.
+ *     tags: [Admin]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: The ID of the order
+ *       - in: body
+ *         name: boosterId
+ *         description: The ID of the booster to assign to the order
+ *         schema:
+ *           type: object
+ *           required:
+ *             - boosterId
+ *           properties:
+ *             boosterId:
+ *               type: integer
+ *               example: 5
+ *     responses:
+ *       200:
+ *         description: Booster assigned to order
+ *       400:
+ *         description: Order is not available for assignment
+ *       404:
+ *         description: Order or Booster not found
+ */
+router.put('/orders/:id/assign-booster', async (req, res) => {
+  const { boosterId } = req.body;
+  const order = await Order.findByPk(req.params.id);
+  const booster = await User.findByPk(boosterId);
+
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+  if (!booster || booster.role !== 'Booster') return res.status(404).json({ error: 'Booster not found' });
+
+  if (order.status !== 'Available') {
+    return res.status(400).json({ error: 'Order is not available for assignment' });
+  }
+
+  // Associar o booster à order
+  order.boosterId = booster.id;
+  order.status = 'In Progress';
+  await order.save();
+
+  res.json({ message: 'Booster assigned to order' });
+});
+
+/**
+ * @swagger
+ * /admin/boosters/{id}/add-funds:
+ *   put:
+ *     summary: Add funds to a booster's wallet
+ *     description: Admin can add a specified amount of money to a booster's wallet.
+ *     tags: [Admin]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: The ID of the booster
+ *       - in: body
+ *         name: amount
+ *         description: The amount of money to add to the wallet
+ *         schema:
+ *           type: object
+ *           required:
+ *             - amount
+ *           properties:
+ *             amount:
+ *               type: number
+ *               example: 100.00
+ *     responses:
+ *       200:
+ *         description: Funds added to wallet
+ *       404:
+ *         description: Booster not found
+ */
+router.put('/boosters/:id/add-funds', async (req, res) => {
+  const { amount } = req.body;
+  const booster = await User.findByPk(req.params.id);
+
+  if (!booster || booster.role !== 'Booster') {
+    return res.status(404).json({ error: 'Booster not found' });
+  }
+
+  // Adicionar o valor à wallet
+  booster.wallet += parseFloat(amount);
+  await booster.save();
+
+  res.json({ message: 'Funds added to wallet', wallet: booster.wallet });
+});
+
+
+/**
+ * @swagger
+ * /admin/boosters/{id}/remove-funds:
+ *   put:
+ *     summary: Remove funds from a booster's wallet
+ *     description: Admin can remove a specified amount of money from a booster's wallet, allowing the balance to become negative.
+ *     tags: [Admin]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: The ID of the booster
+ *       - in: body
+ *         name: amount
+ *         description: The amount of money to remove from the wallet
+ *         schema:
+ *           type: object
+ *           required:
+ *             - amount
+ *           properties:
+ *             amount:
+ *               type: number
+ *               example: 50.00
+ *     responses:
+ *       200:
+ *         description: Funds removed from wallet
+ *       404:
+ *         description: Booster not found
+ */
+router.put('/boosters/:id/remove-funds', async (req, res) => {
+  const { amount } = req.body;
+  const booster = await User.findByPk(req.params.id);
+
+  if (!booster || booster.role !== 'Booster') {
+    return res.status(404).json({ error: 'Booster not found' });
+  }
+
+  // Remover o valor da wallet (permitindo que fique negativa)
+  booster.wallet -= parseFloat(amount);
+  await booster.save();
+
+  res.json({ message: 'Funds removed from wallet', wallet: booster.wallet });
+});
+
 module.exports = router;

@@ -17,15 +17,22 @@ const http = require('http').createServer(app);
 // Integrar Socket.io ao servidor HTTP
 const io = require('socket.io')(http);
 
-const AWS = require('aws-sdk');
-
-AWS.config.update({
-  accessKeyId: process.env.S3_ACCESS_KEY,
-  secretAccessKey: process.env.S3_SECRET_KEY,
-  region: 'eu-north-1' // Altere para sua região
+const { Pool } = require('pg'); // Se estiver usando o pg para conexão
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL, // Heroku já define a variável DATABASE_URL
+  ssl: {
+    rejectUnauthorized: false // Necessário para garantir que a conexão SSL funcione no Heroku
+  }
 });
 
-const s3 = new AWS.S3();
+// Exemplo de uma query
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error(err);
+  } else {
+    console.log('Connected to the database:', res.rows);
+  }
+});
 
 // Swagger Setup
 require('./config/swaggerConfig')(app);
